@@ -1,104 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="description" content="">
-	<meta name="author" content="">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-	<title>Imagine Campus - LiDAR point cloud</title>
-
-	<link rel="stylesheet" type="text/css" href="./libs/potree/potree.css">
-	<link rel="stylesheet" type="text/css" href="./libs/jquery-ui/jquery-ui.min.css">
-	<link rel="stylesheet" type="text/css" href="./libs/openlayers3/ol.css">
-	<link rel="stylesheet" type="text/css" href="./libs/spectrum/spectrum.css">
-	<link rel="stylesheet" type="text/css" href="./libs/jstree/themes/mixed/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiDAR Point Cloud Viewers</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --line:#26303d;
+    --ink:#e6edf3; --dim:#8b949e; --accent:#4ea1ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+    font:15px/1.6 system-ui,-apple-system,Segoe UI,sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:32px}
+  .wrap{width:100%;max-width:880px}
+  h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:28px}
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  a.card{display:block;padding:20px 22px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;text-decoration:none;
+    color:inherit;transition:border-color .15s,transform .15s}
+  a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  a.card h2{margin:0 0 4px;font-size:16px;color:var(--accent)}
+  a.card .where{color:var(--dim);font-size:12px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  td{padding:2px 0;vertical-align:top}
+  td:first-child{color:var(--dim);padding-right:12px;white-space:nowrap}
+  td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .note{margin-top:26px;color:var(--dim);font-size:12px;line-height:1.7}
+  code{background:#1b2129;padding:1px 5px;border-radius:4px;font-size:11.5px}
+</style>
 </head>
-
 <body>
-	<script src="./libs/jquery/jquery-3.1.1.min.js"></script>
-	<script src="./libs/spectrum/spectrum.js"></script>
-	<script src="./libs/jquery-ui/jquery-ui.min.js"></script>
-	<script src="./libs/other/BinaryHeap.js"></script>
-	<script src="./libs/tween/tween.min.js"></script>
-	<script src="./libs/d3/d3.js"></script>
-	<script src="./libs/proj4/proj4.js"></script>
-	<script src="./libs/openlayers3/ol.js"></script>
-	<script src="./libs/i18next/i18next.js"></script>
-	<script src="./libs/jstree/jstree.js"></script>
-	<script src="./libs/potree/potree.js"></script>
-	<script src="./libs/plasio/js/laslaz.js"></script>
-	
-	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
-	<!-- INCLUDE SETTINGS HERE -->
-	
-	<div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
-		<div id="potree_render_area" style="background: #1b2530;"></div>
-		<div id="potree_sidebar_container"> </div>
-	</div>
-	
-	<script>
-	
-		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
-		
-		viewer.setEDLEnabled(true);
-		viewer.setEDLRadius(1.4);
-		viewer.setEDLStrength(1.2);
-		viewer.setPointBudget(20_000_000);
-		viewer.setFOV(55);
-		viewer.setBackground("gradient");
-		viewer.useHQ = true;
-		<!-- INCLUDE SETTINGS HERE -->
-		viewer.loadSettingsFromURL();
-		
-		viewer.setDescription('16.5M points | drone LiDAR | EPSG:32643 | Bangalore');
-		
-		viewer.loadGUI(() => {
-			viewer.setLanguage('en');
-			$("#menu_appearance").next().show();
-			$("#menu_tools").next().show();
-			$("#menu_clipping").next().show();
-			viewer.toggleSidebar();
-		});
-		
-		
+<div class="wrap">
+  <h1>LiDAR Point Cloud Viewers</h1>
+  <div class="sub">Rendered in the browser with Potree. Drag to pan, scroll to zoom.</div>
 
-		Potree.loadPointCloud("./pointclouds/index/metadata.json", "index", e => {
-			let scene = viewer.scene;
-			let pointcloud = e.pointcloud;
-			
-			let material = pointcloud.material;
-			material.size = 1;
-			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-			material.shape = Potree.PointShape.PARABOLOID;
-			material.minSize = 2;
-			material.activeAttributeName = "rgba";
-			
-			scene.addPointCloud(pointcloud);
-			
-			// PotreeConverter writes a CUBIC bounding box, so Z spans far above the
-			// data and fitToScreen() alone leaves the site small and off-centre.
-			// Refine afterwards. No THREE.* here - THREE is not a global in this
-			// build, and a ReferenceError would abort the callback, leaving the
-			// camera unset, everything frustum-culled and NO nodes requested.
-			viewer.fitToScreen();
-			try {
-				const bb = pointcloud.boundingBox;
-				const o = pointcloud.position;
-				const cx = o.x + (bb.min.x + bb.max.x) / 2;
-				const cy = o.y + (bb.min.y + bb.max.y) / 2;
-				const zmin = o.z + bb.min.z;
-				const d = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y) * 1.15;
-				scene.view.position.set(cx - d * 0.55, cy - d * 0.55, zmin + d * 0.42);
-				scene.view.lookAt(cx, cy, zmin + 8);
-			} catch (err) {
-				console.error('camera refine failed, keeping fitToScreen', err);
-			}
-		});
+  <div class="grid">
+    <a class="card" href="campus/">
+      <h2>Imagine Campus</h2>
+      <div class="where">Bangalore, India &middot; EPSG:32643</div>
+      <table>
+        <tr><td>points</td><td>16.5 M</td></tr>
+        <tr><td>survey density</td><td>9,465 pts/m&sup2;</td></tr>
+        <tr><td>area</td><td>4.4 ha</td></tr>
+        <tr><td>colour</td><td>RGB, co-flown camera</td></tr>
+      </table>
+    </a>
 
-		
-		
-	</script>
-	
-	
-  </body>
+    <a class="card" href="hessigheim/">
+      <h2>Hessigheim H3D</h2>
+      <div class="where">Baden-W&uuml;rttemberg, Germany &middot; EPSG:25832</div>
+      <table>
+        <tr><td>points</td><td>12.9 M</td></tr>
+        <tr><td>survey density</td><td>~970 pts/m&sup2;</td></tr>
+        <tr><td>epoch</td><td>March 2019, leaf-off</td></tr>
+        <tr><td>colour</td><td>RGB + 11 semantic classes</td></tr>
+      </table>
+    </a>
+  </div>
+
+  <div class="note">
+    Both viewers are decimated for the web. GitHub Pages enforces a hard
+    100&nbsp;MB per-file limit, and Potree stores its octree as one
+    <code>octree.bin</code> &mdash; so the full surveys (413 M and 232 M points)
+    are served locally instead.
+    <br><br>
+    In the Hessigheim sidebar, switch <em>Appearance &rarr; Attribute</em> to
+    <strong>Classification</strong> to see its labels, which separate
+    <em>Roof</em> from <em>Facade</em>.
+  </div>
+</div>
+</body>
 </html>

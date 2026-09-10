@@ -1,0 +1,5 @@
+# Vendored Potree build plus binary octrees. Disable ALL end-of-line
+# conversion: octree.bin / hierarchy.bin are byte-addressed via HTTP Range
+# requests, so a single LF->CRLF substitution would shift every subsequent
+# offset and corrupt the cloud in ways that only show up as missing nodes.
+* -text
